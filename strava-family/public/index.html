@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carnets d'Ascension</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="contour-bg" aria-hidden="true"></div>
+
+<!-- Lock screen: shown until the shared site access code is entered -->
+<div id="lock-screen" class="lock-screen" hidden>
+  <form id="access-form" class="lock-card">
+    <p class="eyebrow">Accès réservé à la famille</p>
+    <h2>Carnets d'Ascension</h2>
+    <input type="password" id="access-code" placeholder="Code d'accès" autocomplete="off" required>
+    <button type="submit">Entrer</button>
+    <p id="access-error" class="lock-error" hidden>Code incorrect.</p>
+  </form>
+</div>
+
+<header class="masthead" id="main-header" hidden>
+  <div class="masthead-inner">
+    <p class="eyebrow">Carnet de famille — altitude &amp; kilomètres</p>
+    <h1>Carnets d'Ascension</h1>
+    <p class="tagline">Le relevé des sorties de la famille, sommet après sommet.</p>
+  </div>
+</header>
+
+<main id="main-content" hidden>
+
+  <!-- Admin bar -->
+  <section class="admin-bar" id="admin-bar" aria-label="Espace admin">
+    <div id="admin-login" class="admin-login">
+      <button id="admin-login-btn" class="btn-ghost">Mode admin</button>
+    </div>
+    <form id="admin-form" class="admin-form" hidden>
+      <input type="password" id="admin-code" placeholder="Code admin" autocomplete="off">
+      <button type="submit">Valider</button>
+      <button type="button" id="admin-cancel-btn" class="btn-ghost">Annuler</button>
+    </form>
+    <div id="admin-active" class="admin-active" hidden>
+      <span class="admin-badge">★ Mode admin</span>
+      <button id="admin-logout-btn" class="btn-ghost">Quitter le mode admin</button>
+    </div>
+  </section>
+
+  <section id="pending-section" class="pending-section" hidden aria-label="Demandes en attente">
+    <h2>Demandes en attente</h2>
+    <div id="pending-list" class="pending-list"></div>
+  </section>
+
+  <!-- Signature element: elevation skyline built from each member's cumulative D+ -->
+  <section class="skyline-section" aria-label="Profil d'altitude cumulée par membre">
+    <svg id="skyline" viewBox="0 0 1000 260" preserveAspectRatio="none" role="img" aria-label="Silhouette de montagnes représentant le dénivelé cumulé de chaque membre"></svg>
+    <div id="skyline-labels" class="skyline-labels"></div>
+  </section>
+
+  <section class="controls" aria-label="Filtres">
+    <div class="control-group">
+      <span class="control-label">Période</span>
+      <div class="segmented" id="period-filter">
+        <button data-value="week" class="active">Semaine</button>
+        <button data-value="month">Mois</button>
+        <button data-value="year">Année</button>
+        <button data-value="all">Depuis toujours</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <span class="control-label">Activité</span>
+      <div class="segmented" id="sport-filter">
+        <button data-value="all" class="active">Toutes</button>
+      </div>
+    </div>
+    <button id="sync-btn" class="btn-sync" title="Recharger les dernières activités depuis Strava">
+      <span class="sync-icon">⟳</span> Synchroniser
+    </button>
+  </section>
+
+  <section id="empty-state" class="empty-state" hidden>
+    <p>Personne n'est encore relié à Strava.</p>
+    <p class="empty-sub">Connecte le premier membre de la famille ci-dessous pour faire apparaître le classement.</p>
+  </section>
+
+  <section class="podiums" id="podiums" aria-label="Classements">
+    <!-- filled by app.js -->
+  </section>
+
+  <section class="ledger" aria-label="Détail par membre">
+    <h2>Relevé détaillé</h2>
+    <table id="ledger-table">
+      <thead>
+        <tr>
+          <th>Membre</th>
+          <th>Sorties</th>
+          <th>Distance</th>
+          <th>Dénivelé</th>
+          <th>Temps</th>
+          <th>Vitesse moy.</th>
+        </tr>
+      </thead>
+      <tbody id="ledger-body"></tbody>
+    </table>
+  </section>
+
+  <section class="roster" aria-label="Membres de la famille">
+    <h2>Membres</h2>
+    <div id="member-list" class="member-list"></div>
+
+    <form id="connect-form" class="connect-form">
+      <input type="text" id="connect-name" placeholder="Prénom du membre à connecter" required>
+      <button type="submit">Connecter via Strava</button>
+    </form>
+    <p class="connect-hint">Chaque membre autorise son propre compte Strava — les identifiants ne sont jamais partagés entre vous.</p>
+  </section>
+
+</main>
+
+<footer id="main-footer" hidden>
+  <p>Carnets d'Ascension — usage familial, données stockées localement sur le serveur.</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

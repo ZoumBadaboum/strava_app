@@ -1,0 +1,129 @@
+# Carnets d'Ascension
+
+Un petit site pour comparer les stats Strava de la famille : distance, dénivelé,
+nombre de sorties et vitesse moyenne, avec un classement par semaine / mois /
+année / depuis toujours.
+
+Chaque membre de la famille connecte **son propre compte Strava** via
+l'écran d'autorisation officiel. Une nouvelle demande de connexion reste **en
+attente** jusqu'à ce qu'un administrateur l'accepte. Le site est protégé par
+un code d'accès partagé, et le mode admin par un second code séparé.
+
+## Architecture
+
+- **Render** (gratuit) fait tourner le site (Node.js / Express).
+- **Supabase** (gratuit, sans limite de temps) stocke les données dans une
+  vraie base PostgreSQL — comptes connectés, activités importées.
+
+Deux services séparés, tous deux gratuits en continu, chacun spécialisé dans
+son rôle (exécuter le code / stocker les données).
+
+## 1. Créer une application Strava
+
+1. Va sur https://www.strava.com/settings/api et crée une application.
+2. Dans "Authorization Callback Domain", mets le nom de domaine de ton site
+   **sans** `https://` ni chemin :
+   - en local : `localhost`
+   - une fois déployé : `ton-domaine.example`
+3. Note le **Client ID** et le **Client Secret**.
+
+## 2. Créer la base de données sur Supabase
+
+1. Va sur https://supabase.com, crée un compte gratuit, puis un nouveau projet.
+2. Choisis un mot de passe pour la base (note-le, tu en as besoin juste après).
+3. Une fois le projet créé, va dans **Project Settings → Database →
+   Connection string**, onglet **URI**. Copie l'adresse (elle ressemble à
+   `postgres://postgres.xxxx:[MOT-DE-PASSE]@aws-0-xxxx.pooler.supabase.com:6543/postgres`).
+4. Remplace `[MOT-DE-PASSE]` par le mot de passe choisi à l'étape 2. C'est
+   cette adresse complète que tu mettras dans `DATABASE_URL`.
+
+Les tables (`members`, `activities`) sont créées automatiquement par le site
+au premier démarrage — rien à faire manuellement sur Supabase.
+
+## 3. Configurer le projet
+
+```bash
+cp .env.example .env
+```
+
+Remplis `.env` avec :
+- `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` (étape 1)
+- `DATABASE_URL` (étape 2)
+- `BASE_URL` — l'URL publique du site (`http://localhost:3000` en local)
+- `SITE_ACCESS_CODE` — le code que **toute la famille** utilise pour ouvrir
+  le site. Un seul code, à partager par SMS/message une fois.
+- `ADMIN_CODE` — un code que **toi seul** connais, pour valider les demandes
+  de connexion et retirer un membre.
+- `COOKIE_SECRET` — une valeur aléatoire pour signer les cookies de session :
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(24).toString('hex'))"
+  ```
+
+## 4. Installer et lancer
+
+```bash
+npm install
+npm start
+```
+
+Le site est disponible sur `http://localhost:3000`.
+
+## Comment ça se passe côté famille
+
+1. Tu partages le lien du site **et** le `SITE_ACCESS_CODE` à la famille.
+2. Chacun ouvre le site, entre le code, puis clique "Connecter via Strava" et
+   autorise son compte.
+3. Sa demande apparaît en **attente** — il n'est pas encore visible dans les
+   classements.
+4. Toi (avec le `ADMIN_CODE`, via le bouton "Mode admin" en haut du site) vois
+   la demande dans "Demandes en attente" et cliques "Accepter" (ou "Refuser").
+5. Une fois accepté, le membre apparaît dans le classement dès la prochaine
+   synchronisation ("Synchroniser").
+
+Seul le mode admin permet d'accepter une demande ou de retirer quelqu'un
+(bouton ✕ sur son nom) — un membre normal ne peut pas dégager un autre membre.
+
+## Pourquoi pas juste un site statique comme le Catan ?
+
+Un site 100% statique (comme une page GitHub Pages) ne peut rien stocker de
+partagé entre plusieurs personnes par lui-même — au mieux il garde des
+données dans le navigateur de chacun, séparément. Pour que toute la famille
+voie le même classement, il faut un endroit central qui stocke les données :
+ici, Supabase.
+
+Et pour la connexion Strava, l'API exige un `client_secret` qui ne doit
+**jamais** apparaître dans du code envoyé au navigateur (sinon n'importe qui
+pourrait l'utiliser pour se faire passer pour ton application) — ça impose
+un petit serveur qui tourne en continu, ici Render.
+
+## Déploiement
+
+1. Crée un compte Render (https://render.com), connecte ton dépôt GitHub,
+   crée un **Web Service** avec :
+   - Build Command : `npm install`
+   - Start Command : `npm start`
+   - Instance Type : **Free** (aucun disque à ajouter, Supabase s'en charge)
+2. Dans l'onglet **Environment**, ajoute toutes les variables de ton `.env`
+   (`STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `DATABASE_URL`,
+   `SITE_ACCESS_CODE`, `ADMIN_CODE`, `COOKIE_SECRET`, `BASE_URL`).
+3. Une fois déployé, récupère l'adresse fournie par Render, mets-la à jour
+   dans `BASE_URL` (sur Render) et dans le "Authorization Callback Domain"
+   de ton application Strava.
+
+## Structure du projet
+
+```
+server.js            → routes Express (auth Strava, sessions, API stats)
+lib/db.js             → connexion PostgreSQL (pool) + création du schéma
+lib/strava.js         → échange/rafraîchissement de jetons, import des activités
+public/index.html      → page unique (+ écran de verrouillage)
+public/app.js           → logique front (accès, admin, classements)
+public/style.css        → thème « carnet d'expédition »
+```
+
+## Limites connues
+
+- Le premier import remonte 2 ans d'activités ; ajustable dans
+  `lib/strava.js` (`syncMemberActivities`).
+- La synchronisation n'est déclenchée que manuellement (bouton
+  "Synchroniser"), pas automatiquement en tâche de fond.

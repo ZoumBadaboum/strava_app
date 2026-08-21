@@ -255,6 +255,37 @@ app.get('/api/leaderboard', requireAccess, async (req, res) => {
   }
 });
 
+app.get('/api/routes', requireAccess, async (req, res) => {
+  try {
+    const period = req.query.period || 'all';
+    const sport = req.query.sport || 'all';
+    const since = periodStartDate(period);
+
+    const { rows: members } = await pool.query(
+      `SELECT id, display_name FROM members WHERE status = 'active' ORDER BY display_name`
+    );
+
+    const routes = await Promise.all(members.map(async (m) => {
+      const { rows } = await pool.query(
+        `SELECT id, sport_type, polyline FROM activities
+         WHERE member_id = $1 AND start_date >= $2 AND polyline IS NOT NULL AND polyline <> ''
+         AND ($3 = 'all' OR sport_type = $3)`,
+        [m.id, since, sport]
+      );
+      return {
+        id: m.id,
+        name: m.display_name,
+        polylines: rows.map((r) => r.polyline)
+      };
+    }));
+
+    res.json({ period, sport, members: routes.filter((r) => r.polylines.length > 0) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.get('/*splat', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

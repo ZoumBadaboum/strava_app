@@ -2,7 +2,8 @@
 
 Un petit site pour comparer les stats Strava de la famille : distance, dénivelé,
 nombre de sorties et vitesse moyenne, avec un classement par semaine / mois /
-année / depuis toujours.
+année / depuis toujours — et une carte interactive qui superpose les tracés
+GPS de tout le monde, une couleur par membre.
 
 Chaque membre de la famille connecte **son propre compte Strava** via
 l'écran d'autorisation officiel. Une nouvelle demande de connexion reste **en
@@ -31,10 +32,12 @@ son rôle (exécuter le code / stocker les données).
 
 1. Va sur https://supabase.com, crée un compte gratuit, puis un nouveau projet.
 2. Choisis un mot de passe pour la base (note-le, tu en as besoin juste après).
-3. Une fois le projet créé, va dans **Project Settings → Database →
-   Connection string**, onglet **URI**. Copie l'adresse (elle ressemble à
-   `postgres://postgres.xxxx:[MOT-DE-PASSE]@aws-0-xxxx.pooler.supabase.com:6543/postgres`).
-4. Remplace `[MOT-DE-PASSE]` par le mot de passe choisi à l'étape 2. C'est
+3. Une fois le projet créé, clique sur **Connect** (en haut de l'écran du
+   projet), puis choisis l'onglet **Transaction pooler** (pas "Direct
+   connection", qui est en IPv6 et ne fonctionne pas depuis Render). Copie
+   l'adresse (elle ressemble à
+   `postgres://postgres.xxxx:[YOUR-PASSWORD]@aws-0-xxxx.pooler.supabase.com:6543/postgres`).
+4. Remplace `[YOUR-PASSWORD]` par le mot de passe choisi à l'étape 2. C'est
    cette adresse complète que tu mettras dans `DATABASE_URL`.
 
 Les tables (`members`, `activities`) sont créées automatiquement par le site
@@ -109,6 +112,19 @@ un petit serveur qui tourne en continu, ici Render.
 3. Une fois déployé, récupère l'adresse fournie par Render, mets-la à jour
    dans `BASE_URL` (sur Render) et dans le "Authorization Callback Domain"
    de ton application Strava.
+
+## La carte des tracés
+
+En dessous du classement, une carte interactive (Leaflet, gratuite, fond de
+carte sombre) affiche le tracé GPS de chaque activité, une couleur fixe par
+membre (visible aussi dans le graphique de dénivelé, pour la cohérence). Elle
+se recalcule automatiquement à chaque "Synchroniser" et à chaque changement
+de filtre (période / sport).
+
+Le tracé vient directement du `summary_polyline` que Strava renvoie avec
+chaque activité — pas d'appel API supplémentaire, pas d'export manuel à
+gérer. Les activités enregistrées sans données GPS (entraînement indoor,
+saisie manuelle...) n'apparaissent simplement pas sur la carte.
 
 ## Structure du projet
 

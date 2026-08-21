@@ -6,6 +6,41 @@ const state = {
   isAdmin: false
 };
 
+// Stable color per member (same member = same color everywhere on the site,
+// regardless of current sort order), cycling through this palette by id.
+const MEMBER_COLORS = ['#d4a94a', '#c2622d', '#6f8f6a', '#7a94a8', '#9c7a5c', '#8a6f9c', '#e2793b', '#4a90a4'];
+function colorForMember(id) {
+  return MEMBER_COLORS[Number(id) % MEMBER_COLORS.length];
+}
+
+// Decodes a Google/Strava-encoded polyline string into [lat, lng] pairs.
+// Standard algorithm, precision 1e5 (same as Strava's summary_polyline).
+function decodePolyline(encoded) {
+  const points = [];
+  let index = 0, lat = 0, lng = 0;
+  while (index < encoded.length) {
+    let result = 1, shift = 0, b;
+    do {
+      b = encoded.charCodeAt(index++) - 63 - 1;
+      result += b << shift;
+      shift += 5;
+    } while (b >= 0x1f);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    result = 1;
+    shift = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63 - 1;
+      result += b << shift;
+      shift += 5;
+    } while (b >= 0x1f);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    points.push([lat * 1e-5, lng * 1e-5]);
+  }
+  return points;
+}
+
 const fmtKm = (n) => `${n.toLocaleString('fr-FR')} km`;
 const fmtM = (n) => `${n.toLocaleString('fr-FR')} m`;
 const fmtH = (n) => `${n.toLocaleString('fr-FR')} h`;
@@ -158,6 +193,68 @@ async function loadLeaderboard() {
   renderLedger(data.members);
 }
 
+// --- Route map ---
+let leafletMap = null;
+let routeLayerGroup = null;
+
+function ensureMap() {
+  if (leafletMap) return;
+  leafletMap = L.map('routes-map', { scrollWheelZoom: false }).setView([46.6, 2.4], 5); // default: France
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    maxZoom: 19
+  }).addTo(leafletMap);
+  routeLayerGroup = L.layerGroup().addTo(leafletMap);
+}
+
+async function loadRoutes() {
+  try {
+    const data = await fetchJSON(`/api/routes?period=${state.period}&sport=${state.sport}`);
+    renderRoutes(data.members);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function renderRoutes(members) {
+  const section = document.querySelector('.map-section');
+  const legend = document.getElementById('map-legend');
+
+  if (!members.length) {
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+
+  ensureMap();
+  // Leaflet needs a nudge to recalc size the first time its container becomes visible
+  setTimeout(() => leafletMap.invalidateSize(), 0);
+
+  routeLayerGroup.clearLayers();
+  const bounds = [];
+
+  members.forEach((m) => {
+    const color = colorForMember(m.id);
+    m.polylines.forEach((encoded) => {
+      const points = decodePolyline(encoded);
+      if (points.length < 2) return;
+      L.polyline(points, { color, weight: 2.5, opacity: 0.75 }).addTo(routeLayerGroup);
+      bounds.push(...points);
+    });
+  });
+
+  if (bounds.length) {
+    leafletMap.fitBounds(bounds, { padding: [20, 20], maxZoom: 14 });
+  }
+
+  legend.innerHTML = members.map((m) => `
+    <span class="legend-item">
+      <span class="legend-swatch" style="background:${colorForMember(m.id)}"></span>
+      ${escapeHtml(m.name)}
+    </span>
+  `).join('');
+}
+
 function renderEmptyState() {
   const hasMembers = state.members.length > 0;
   document.getElementById('empty-state').hidden = hasMembers;
@@ -185,7 +282,7 @@ function renderSkyline(members) {
   const n = sorted.length;
   const slotWidth = width / n;
 
-  const colors = ['#d4a94a', '#c2622d', '#6f8f6a', '#7a94a8', '#9c7a5c', '#8a6f9c'];
+  const colors = MEMBER_COLORS;
 
   sorted.forEach((m, i) => {
     const ratio = m.elevationM / maxElev;
@@ -197,7 +294,7 @@ function renderSkyline(members) {
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     const d = `M ${leftBase} ${baseline} L ${cx} ${peakHeight} L ${rightBase} ${baseline} Z`;
     path.setAttribute('d', d);
-    path.setAttribute('fill', colors[i % colors.length]);
+    path.setAttribute('fill', colorForMember(m.id));
     path.setAttribute('fill-opacity', i === 0 ? '0.95' : '0.55');
     path.setAttribute('stroke', 'rgba(22,35,42,0.4)');
     path.setAttribute('stroke-width', '1');
@@ -272,6 +369,7 @@ function renderSportFilter(availableSports) {
       container.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       loadLeaderboard();
+      loadRoutes();
     });
   });
 }
@@ -313,6 +411,7 @@ document.getElementById('period-filter').addEventListener('click', (e) => {
   document.querySelectorAll('#period-filter button').forEach((b) => b.classList.remove('active'));
   btn.classList.add('active');
   loadLeaderboard();
+  loadRoutes();
 });
 
 document.getElementById('sync-btn').addEventListener('click', async () => {
@@ -323,6 +422,7 @@ document.getElementById('sync-btn').addEventListener('click', async () => {
   try {
     await fetchJSON('/api/sync', { method: 'POST' });
     await loadLeaderboard();
+    await loadRoutes();
   } catch (err) {
     alert('La synchronisation a échoué : ' + err.message);
   } finally {
@@ -364,6 +464,7 @@ async function boot() {
     renderAdminUI();
     await loadMembers();
     await loadLeaderboard();
+    await loadRoutes();
     if (state.isAdmin) await loadPending();
     showConnectFeedback();
   } catch (err) {

@@ -193,6 +193,61 @@ async function loadLeaderboard() {
   renderLedger(data.members);
 }
 
+// --- Bike best-efforts comparative table ---
+
+function formatDuration(seconds) {
+  const s = Math.round(seconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  return `${m}:${String(sec).padStart(2, '0')}`;
+}
+
+function formatShortDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+async function loadBikeTable() {
+  try {
+    const data = await fetchJSON('/api/bike-best-efforts');
+    renderBikeTable(data.targets, data.members);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function renderBikeTable(targets, members) {
+  const section = document.querySelector('.bike-section');
+  const hasAnyEffort = members.some((m) => Object.keys(m.efforts).length > 0);
+
+  if (!members.length || !hasAnyEffort) {
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+
+  const head = document.getElementById('bike-table-head');
+  head.innerHTML = `<th>Distance</th>${members.map((m) => `<th>${escapeHtml(m.name)}</th>`).join('')}`;
+
+  const body = document.getElementById('bike-table-body');
+  body.innerHTML = targets.map((target) => {
+    const cells = members.map((m) => {
+      const effort = m.efforts[target.label];
+      if (!effort) return `<td class="bike-cell-empty">—</td>`;
+      return `<td>
+        <span class="bike-cell-time">${formatDuration(effort.timeS)}</span>
+        <span class="bike-cell-sub">${effort.avgSpeedKmh} km/h</span>
+        <span class="bike-cell-sub">${formatShortDate(effort.achievedAt)}</span>
+      </td>`;
+    }).join('');
+    return `<tr><td>${escapeHtml(target.label)}</td>${cells}</tr>`;
+  }).join('');
+}
+
 // --- Route map ---
 let leafletMap = null;
 let routeLayerGroup = null;
@@ -423,6 +478,7 @@ document.getElementById('sync-btn').addEventListener('click', async () => {
     await fetchJSON('/api/sync', { method: 'POST' });
     await loadLeaderboard();
     await loadRoutes();
+    await loadBikeTable();
   } catch (err) {
     alert('La synchronisation a échoué : ' + err.message);
   } finally {
@@ -465,6 +521,7 @@ async function boot() {
     await loadMembers();
     await loadLeaderboard();
     await loadRoutes();
+    await loadBikeTable();
     if (state.isAdmin) await loadPending();
     showConnectFeedback();
   } catch (err) {

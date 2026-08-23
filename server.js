@@ -187,6 +187,42 @@ function periodStartDate(period) {
   return '1970-01-01T00:00:00Z'; // all time
 }
 
+app.get('/api/bike-best-efforts', requireAccess, async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT m.id as member_id, m.display_name, b.distance_label, b.distance_m, b.best_time_s, b.achieved_at
+      FROM members m
+      LEFT JOIN bike_best_efforts b ON b.member_id = m.id
+      WHERE m.status = 'active'
+      ORDER BY m.display_name
+    `);
+
+    const membersById = new Map();
+    for (const row of rows) {
+      if (!membersById.has(row.member_id)) {
+        membersById.set(row.member_id, { id: row.member_id, name: row.display_name, efforts: {} });
+      }
+      if (row.distance_label) {
+        const timeS = Number(row.best_time_s);
+        const distanceM = Number(row.distance_m);
+        membersById.get(row.member_id).efforts[row.distance_label] = {
+          timeS,
+          avgSpeedKmh: Math.round(((distanceM / 1000) / (timeS / 3600)) * 10) / 10,
+          achievedAt: row.achieved_at
+        };
+      }
+    }
+
+    res.json({
+      targets: strava.BIKE_TARGET_DISTANCES,
+      members: Array.from(membersById.values())
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.get('/api/leaderboard', requireAccess, async (req, res) => {
   try {
     const period = req.query.period || 'all';

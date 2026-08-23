@@ -271,6 +271,68 @@ h1 {
   padding: 1rem 0;
 }
 
+/* --- Bike best-efforts table --- */
+.bike-section {
+  max-width: 1100px;
+  margin: 3rem auto 0;
+  padding: 0 1.5rem;
+}
+.bike-section h2 {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  margin: 0 0 1rem;
+}
+.bike-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+#bike-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+#bike-table th, #bike-table td {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+#bike-table th {
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-ink-dim);
+  background: var(--ink-2);
+}
+#bike-table td:first-child, #bike-table th:first-child {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 500;
+  position: sticky;
+  left: 0;
+  background: var(--ink);
+}
+#bike-table th:first-child { background: var(--ink-2); }
+.bike-cell-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  color: var(--text-ink);
+}
+.bike-cell-sub {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--text-ink-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+.bike-cell-empty { color: var(--text-ink-dim); }
+.bike-note {
+  font-size: 0.78rem;
+  color: var(--text-ink-dim);
+  margin-top: 0.7rem;
+}
+
 /* --- Ledger table --- */
 .ledger { max-width: 1100px; margin: 3rem auto 0; padding: 0 1.5rem; }
 .ledger h2, .roster h2 {

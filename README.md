@@ -2,8 +2,10 @@
 
 Un petit site pour comparer les stats Strava de la famille : distance, dénivelé,
 nombre de sorties et vitesse moyenne, avec un classement par semaine / mois /
-année / depuis toujours — et une carte interactive qui superpose les tracés
-GPS de tout le monde, une couleur par membre.
+année / depuis toujours — une carte interactive qui superpose les tracés
+GPS de tout le monde, une couleur par membre — et un tableau comparatif des
+records vélo sur les distances de référence (5 miles, 10 km, 20 km, 40 km,
+50 km, 100 km).
 
 Chaque membre de la famille connecte **son propre compte Strava** via
 l'écran d'autorisation officiel. Une nouvelle demande de connexion reste **en
@@ -126,6 +128,23 @@ chaque activité — pas d'appel API supplémentaire, pas d'export manuel à
 gérer. Les activités enregistrées sans données GPS (entraînement indoor,
 saisie manuelle...) n'apparaissent simplement pas sur la carte.
 
+## Les records vélo
+
+Un tableau compare les meilleurs temps de chaque membre sur des distances de
+référence (5 miles, 10 km, 20 km, 40 km, 50 km, 100 km), avec le temps, la
+vitesse moyenne et la date de la performance.
+
+Strava calcule bien ce genre de records pour le vélo dans son appli, mais ne
+les expose pas via l'API pour les applications tierces (seule la course à
+pied l'est). Le site les recalcule donc lui-même : à chaque synchronisation,
+il télécharge le tracé GPS (distance/temps) de chaque nouvelle sortie vélo et
+cherche, avec une fenêtre glissante, la portion la plus rapide pour chaque
+distance de référence. Chaque activité n'est analysée qu'une seule fois
+(marquée en base une fois traitée), et le nombre d'analyses par synchro est
+plafonné pour rester sous les limites de l'API Strava — sur un gros
+historique, plusieurs clics sur "Synchroniser" peuvent être nécessaires pour
+tout traiter.
+
 ## Structure du projet
 
 ```
@@ -139,7 +158,9 @@ public/style.css        → thème « carnet d'expédition »
 
 ## Limites connues
 
-- Le premier import remonte 2 ans d'activités ; ajustable dans
-  `lib/strava.js` (`syncMemberActivities`).
+- Le premier import remonte **tout l'historique** disponible sur Strava (peut
+  prendre un peu de temps si quelqu'un a plusieurs années d'activités —
+  ajustable dans `lib/strava.js`, `syncMemberActivities`, si tu préfères
+  limiter la fenêtre pour aller plus vite).
 - La synchronisation n'est déclenchée que manuellement (bouton
   "Synchroniser"), pas automatiquement en tâche de fond.

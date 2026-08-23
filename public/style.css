@@ -327,6 +327,19 @@ h1 {
   font-family: 'JetBrains Mono', monospace;
 }
 .bike-cell-empty { color: var(--text-ink-dim); }
+.bike-cell-best {
+  background: rgba(212, 169, 74, 0.16);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+.bike-medal {
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 0.1rem;
+}
+.bike-row-longest td {
+  font-weight: 500;
+}
+.bike-row-longest { border-bottom: 2px solid var(--line); }
 .bike-note {
   font-size: 0.78rem;
   color: var(--text-ink-dim);

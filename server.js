@@ -200,7 +200,7 @@ app.get('/api/bike-best-efforts', requireAccess, async (req, res) => {
     const membersById = new Map();
     for (const row of rows) {
       if (!membersById.has(row.member_id)) {
-        membersById.set(row.member_id, { id: row.member_id, name: row.display_name, efforts: {} });
+        membersById.set(row.member_id, { id: row.member_id, name: row.display_name, efforts: {}, longestRide: null });
       }
       if (row.distance_label) {
         const timeS = Number(row.best_time_s);
@@ -209,6 +209,22 @@ app.get('/api/bike-best-efforts', requireAccess, async (req, res) => {
           timeS,
           avgSpeedKmh: Math.round(((distanceM / 1000) / (timeS / 3600)) * 10) / 10,
           achievedAt: row.achieved_at
+        };
+      }
+    }
+
+    // Longest single ride per member — a direct MAX(), no GPS analysis needed for this one.
+    const { rows: longestRows } = await pool.query(`
+      SELECT DISTINCT ON (member_id) member_id, distance_m, start_date
+      FROM activities
+      WHERE sport_type LIKE '%Ride%'
+      ORDER BY member_id, distance_m DESC
+    `);
+    for (const row of longestRows) {
+      if (membersById.has(row.member_id)) {
+        membersById.get(row.member_id).longestRide = {
+          distanceKm: Math.round((Number(row.distance_m) / 1000) * 10) / 10,
+          achievedAt: row.start_date
         };
       }
     }

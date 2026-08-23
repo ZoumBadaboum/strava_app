@@ -130,9 +130,12 @@ saisie manuelle...) n'apparaissent simplement pas sur la carte.
 
 ## Les records vélo
 
-Un tableau compare les meilleurs temps de chaque membre sur des distances de
-référence (5 miles, 10 km, 20 km, 40 km, 50 km, 100 km), avec le temps, la
-vitesse moyenne et la date de la performance.
+Un tableau compare les meilleurs temps de chaque membre sur les distances de
+référence que Strava lui-même utilise (5 mi, 10 km, 10 mi, 20 km, 30 km,
+40 km, 50 km, 80 km, 50 mi, 90 km, 100 km, 150 km, 100 mi, 180 km, 200 km,
+250 km, 300 km, 350 km), plus une ligne "Sortie la plus longue". Le record
+familial de chaque ligne (le meilleur des membres) est mis en évidence en
+doré avec une petite médaille 🏆.
 
 Strava calcule bien ce genre de records pour le vélo dans son appli, mais ne
 les expose pas via l'API pour les applications tierces (seule la course à

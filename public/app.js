@@ -222,7 +222,7 @@ async function loadBikeTable() {
 
 function renderBikeTable(targets, members) {
   const section = document.querySelector('.bike-section');
-  const hasAnyEffort = members.some((m) => Object.keys(m.efforts).length > 0);
+  const hasAnyEffort = members.some((m) => Object.keys(m.efforts).length > 0 || m.longestRide);
 
   if (!members.length || !hasAnyEffort) {
     section.hidden = true;
@@ -234,11 +234,40 @@ function renderBikeTable(targets, members) {
   head.innerHTML = `<th>Distance</th>${members.map((m) => `<th>${escapeHtml(m.name)}</th>`).join('')}`;
 
   const body = document.getElementById('bike-table-body');
-  body.innerHTML = targets.map((target) => {
-    const cells = members.map((m) => {
+  let rowsHtml = '';
+
+  // Longest single ride — its own row, distance-based rather than time-based.
+  let bestLongestIdx = -1, bestLongestKm = -Infinity;
+  members.forEach((m, idx) => {
+    if (m.longestRide && m.longestRide.distanceKm > bestLongestKm) {
+      bestLongestKm = m.longestRide.distanceKm;
+      bestLongestIdx = idx;
+    }
+  });
+  const longestCells = members.map((m, idx) => {
+    if (!m.longestRide) return `<td class="bike-cell-empty">—</td>`;
+    const isBest = idx === bestLongestIdx;
+    return `<td class="${isBest ? 'bike-cell-best' : ''}">
+      ${isBest ? '<span class="bike-medal" title="Record familial">🏆</span>' : ''}
+      <span class="bike-cell-time">${m.longestRide.distanceKm} km</span>
+      <span class="bike-cell-sub">${formatShortDate(m.longestRide.achievedAt)}</span>
+    </td>`;
+  }).join('');
+  rowsHtml += `<tr class="bike-row-longest"><td>Sortie la plus longue</td>${longestCells}</tr>`;
+
+  // One row per reference distance, fastest member in the family highlighted.
+  rowsHtml += targets.map((target) => {
+    let bestIdx = -1, bestTimeS = Infinity;
+    members.forEach((m, idx) => {
+      const e = m.efforts[target.label];
+      if (e && e.timeS < bestTimeS) { bestTimeS = e.timeS; bestIdx = idx; }
+    });
+    const cells = members.map((m, idx) => {
       const effort = m.efforts[target.label];
       if (!effort) return `<td class="bike-cell-empty">—</td>`;
-      return `<td>
+      const isBest = idx === bestIdx;
+      return `<td class="${isBest ? 'bike-cell-best' : ''}">
+        ${isBest ? '<span class="bike-medal" title="Record familial">🏆</span>' : ''}
         <span class="bike-cell-time">${formatDuration(effort.timeS)}</span>
         <span class="bike-cell-sub">${effort.avgSpeedKmh} km/h</span>
         <span class="bike-cell-sub">${formatShortDate(effort.achievedAt)}</span>
@@ -246,6 +275,8 @@ function renderBikeTable(targets, members) {
     }).join('');
     return `<tr><td>${escapeHtml(target.label)}</td>${cells}</tr>`;
   }).join('');
+
+  body.innerHTML = rowsHtml;
 }
 
 // --- Route map ---
